@@ -1,0 +1,89 @@
+import mongoose from "mongoose";
+
+const orderSchema = new mongoose.Schema({
+    orderId:{
+        type:String,
+        required:true,
+        unique:true
+    },
+    firstName:{
+        type:String,
+        required:true
+    },
+    lastName:{
+        type:String,
+        required:true
+    },
+    addressLine1:{
+        type:String,
+        required:true
+    },
+    addressLine2:{
+        type:String,
+    },
+    city:{
+        type:String,
+        required:true
+    },
+    country:{
+        type:String,
+        required:true,
+        default:"Sri lanka"
+    },
+    zipCode:{
+        type:String,
+        required:true
+    },
+    phoneNo:{
+        type:String,
+        required:true
+    },
+    email:{
+        type:String,
+        required:true
+    },
+    items:[{
+        productId:{
+            type:String,
+            required:true
+        },
+        name:{
+            type:String,
+            required:true
+        },
+        price:{
+            type:Number,
+            required:true
+        },
+        labledPrice:{
+            type:Number,
+        },
+        Image:{
+            type:String,
+            default:""
+        },
+        qty:{
+            type:Number,
+            required:true
+        }
+    }],
+    total:{
+        type:Number,
+        required:true
+    },
+    status:{
+        type:String,
+        required:true,
+        default:"pending"
+    },
+    date:{
+        type:Date,
+        default:Date.now
+    },
+    notes:{
+        type:String,
+    }
+})
+
+const Order = mongoose.model("Order",orderSchema)
+export default Order

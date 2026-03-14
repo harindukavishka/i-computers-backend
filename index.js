@@ -5,6 +5,7 @@ import productRouter from './routers/productRouter.js'
 import authorizedUser from './lib/jwtMiddleware.js'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import orderRouter from './routers/orderRouter.js'
 
 dotenv.config()
 
@@ -33,5 +34,8 @@ app.use("/api/users", userRouter)
 
 app.use("/api/product", productRouter)
 
+app.use("/api/orders", orderRouter)
+
 
 app.listen(3000, ()=>{console.log("Server Started")})
+
