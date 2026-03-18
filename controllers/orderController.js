@@ -1,5 +1,6 @@
 import Order from "../models/order.js";
 import Product from "../models/product.js";
+import { isAdmin } from "./userController.js";
 
 export async function createOrder(req,res){
 
@@ -97,5 +98,32 @@ export async function createOrder(req,res){
     }catch(Error){
         console.log(Error)
         res.status(500).json({message : "Error creating order", error : Error});
+    }
+}
+
+
+
+export async function getOrders(req,res){
+
+    const pageSizeInString = req.params.pageSize || "10";
+    const pageSize = parseInt(pageSizeInString);
+    const pageNumberInString = req.params.pageNumber || "1";
+    const pageNumber = parseInt(pageNumberInString);
+
+    try{
+        if(isAdmin(req)){ 
+            const numberOfOrders = await Order.countDocuments();
+            const numberOfPages = Math.ceil(numberOfOrders/pageSize);
+            const orders = await Order.find().sort({date : -1}).skip((pageNumber-1)*pageSize).limit(pageSize);
+            res.status(200).json({orders : orders, totalPages : numberOfPages});
+        }else{
+            const numberOfOrders = await Order.countDocuments();
+            const numberOfPages = Math.ceil(numberOfOrders/pageSize);
+            const orders = await Order.find({email : req.user.email}).sort({date : -1}).skip((pageNumber-1)*pageSize).limit(pageSize);
+            res.status(200).json({orders : orders, totalPages : numberOfPages});
+        }
+    }catch(Error){
+        console.log(Error)
+        res.status(500).json({message : "Error fetching orders", error : Error});
     }
 }
