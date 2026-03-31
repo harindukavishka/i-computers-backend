@@ -127,3 +127,23 @@ export async function getOrders(req,res){
         res.status(500).json({message : "Error fetching orders", error : Error});
     }
 }
+
+
+
+export async function updateOrder(req,res) {
+   if(isAdmin(req)){
+
+        const orderId = req.params.orderId;
+       
+        try{
+            await Order.updateOne({orderId : orderId},{status : req.body.status, notes : req.body.notes});
+            res.status(200).json({message : "Order updated successfully"});
+        }catch(error){
+            res.status(500).json({message : "Error updating order", error : error});
+            return
+        }
+    }else{
+        res.status(403).json({message : "Access denied, Admins only"});
+        return
+   }
+}

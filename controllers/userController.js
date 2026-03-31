@@ -101,6 +101,25 @@ export function loginUser(req,res){
 
 }
 
+export function getUser(req,res){
+
+    if(req.user == null){
+        res.status(401).json({
+            message:"Unauthorized"
+        });
+        return;
+    }
+
+    res.json({
+        email : req.user.email,
+        firstName : req.user.firstName,
+        lastName : req.user.lastName,
+        role : req.user.role,
+        image : req.user.image,
+        isEmailVerified : req.user.isEmailVerified
+    })
+}
+
 export function isAdmin(req){
     if(req.user == null){
         return false;
@@ -109,5 +128,65 @@ export function isAdmin(req){
         return true;
     }else{
         return false;
+    }
+}
+
+export async function updateUser(req,res){
+    if(req.user==null){
+        res.status(404).json({
+            message:"Unauthorized"
+        });
+        return;
+    }
+    try{
+
+        await User.updateOne({email : req.user.email},{firstName : req.body.firstName, lastName : req.body.lastName, image: req.body.image});
+
+        const user = await User.findOne({email : req.user.email});
+
+        const token = jwt.sign(
+            {
+                email : user.email,
+                firstName : user.firstName,
+                lastName : user.lastName,
+                role : user.role,
+                image : user.image,
+                isEmailVerified : user.isEmailVerified
+            },
+            process.env.JWT_SECRET,
+            {expiresIn: req.body.remeberme ? "30d" : "48h"}
+        )
+
+        res.status(200).json({
+            message:"Profile updated successfully",
+            token : token
+        });
+
+    }catch(Error){
+        res.status(500).json({
+            message:"Internal server error"
+        });
+    }
+}
+
+export async function updatePassword(req,res){
+    if(req.user==null){
+        res.status(404).json({
+            message:"Unauthorized"
+        });
+        return;
+    }
+    try{
+
+        const hashPassword = bcrypt.hashSync(req.body.password, 10);
+        await User.updateOne({email : req.user.email},{password : hashPassword});
+        res.status(200).json({
+            message:"Password updated successfully"
+        });
+
+    }catch(Error){
+        res.status(500).json({
+            message:"Internal server error"
+        });
     }
 }
