@@ -2,8 +2,22 @@ import User from "../models/user.js";
 import bcrypt, { hashSync } from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import Otp from "../models/otp.js";
+import nodemailer from "nodemailer";
+import axios from "axios";
 
 dotenv.config();
+
+const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+            user: "marvexharindu@gmail.com",
+            pass: process.env.GMAIL_APP_PASSWORD
+        }
+    });
 
 export function createUser(req,res){
 
@@ -188,5 +202,147 @@ export async function updatePassword(req,res){
         res.status(500).json({
             message:"Internal server error"
         });
+    }
+}
+
+export async function sendOTP(req,res){
+    try{
+        const user = await User.findOne({email : req.body.email});
+        if(user == null){
+            res.status(404).json({
+                message:"User not found"
+            });
+            return;
+        }
+        
+        const otp = Math.floor(10000 + Math.random() * 90000);
+
+        await Otp.deleteMany({email:req.body.email})
+        
+        const newOtp = new Otp({
+            email : req.body.email,
+            otp : otp
+        })
+        await newOtp.save();
+        res.status(200).json({
+            message:"OTP sent successfully"
+        });
+        const massege = {
+            from: "marvexharindu@gmail.com",
+            to : req.body.email,
+            subject : "Your OTP for reset password",
+            text : "Your OTP for password reset "+ otp +". Is valid for 10 min "
+        }
+
+        transporter.sendMail(massege, (error,info)=>{
+            if(error){
+                console.log("Error sending email", error)
+                res.status(500).json({massege : "Error sending email", error : error})
+            }else{
+                console.log("Email send successfully", info.response)
+                res.status(200).json({massege : "OTP sent successfully"})
+            }
+        })
+
+    }catch(Error){
+        res.status(500).json({
+            message:"OTP sending failed",
+            error: Error
+            
+        });
+    }
+}
+
+export async function verifyOTP(req,res) {
+    try{
+
+        const otpCode = req.body.otp
+        const email = req.body.email
+        const newPassword = req.body.newPassword
+
+        const otpRecord = await Otp.findOne({email:email})
+
+        if(otpRecord == null){
+            res.status(404).json({message:"OTP not found for the given email"})
+            return
+        }
+
+        if(otpRecord.otp != otpCode){
+            res.status(400).json({message:"Invalid OTP"})
+            return
+        }
+
+        const hashedNewPassword = bcrypt.hashSync(newPassword,10);
+        await User.updateOne({email:email},{password:hashedNewPassword})
+        await Otp.deleteOne({email:email})
+
+        res.status(200).json({message:"Password reset successfully"})
+
+    }catch(error){
+       res.status(500).json({message:"Error verifing OTP", error:error})
+       console.log(error)
+    }
+}
+
+export async function googleLogin(req,res){
+    try{
+
+       const googleResponse = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo",{
+            headers : {
+                Authorization : "Bearer " +req.body.token
+            }
+        })
+
+        console.log(googleResponse.data)
+
+        const user = await User.findOne({email : googleResponse.data.email})
+        if(user == null){
+            const newUser = new User({
+                email : googleResponse.data.email,
+                firstName : googleResponse.data.given_name,
+                lastName : googleResponse.data.family_name,
+                password : "googleLogin",
+                image : googleResponse.data.picture,
+                isEmailVerified : true
+            })
+            await newUser.save();
+            cnsole.log("New user created")
+            const token = jwt.sign(
+                {
+                    email : newUser.email,
+                    firstName : newUser.firstName,
+                    lastName : newUser.lastName,
+                    role : newUser.role,
+                    image : newUser.image,
+                    isEmailVerified : newUser.isEmailVerified
+                },
+                process.env.JWT_SECRET
+            )
+            res.status(200).json({
+                token : token,
+                message : "Login successfully",
+                role : newUser.role
+            })
+        }else{
+            const token = jwt.sign(
+                {
+                    email : user.email,
+                    firstName : user.firstName,
+                    lastName : user.lastName,
+                    image : user.image,
+                    isEmailVerified : user.isEmailVerified
+                },
+                process.env.JWT_SECRET
+            )
+            res.status(200).json({
+                token : token,
+                message : "Login successfully",
+                role : user.role
+            })
+        }
+
+    }catch(error){
+        res.status(500).json({message:"Error logging in with google", error : error})
+        console.log(error)
     }
 }
